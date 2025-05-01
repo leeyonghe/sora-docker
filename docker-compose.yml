@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  opensora:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: opensora
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./:/workspace
+      - ./ckpts:/workspace/ckpts
+      - ./samples:/workspace/samples
+    ports:
+      - "8888:8888"  # Jupyter Notebook
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' 
