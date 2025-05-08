@@ -14,8 +14,6 @@ services:
       - ./:/workspace
       - ./ckpts:/workspace/ckpts
       - ./samples:/workspace/samples
-    ports:
-      - "8888:8888"  # Jupyter Notebook
     deploy:
       resources:
         reservations:
@@ -23,4 +21,4 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-    command: jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' 
+    command: /bin/bash 

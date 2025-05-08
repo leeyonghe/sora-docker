@@ -1,46 +1,51 @@
 # Build arguments
-ARG CUDA_VERSION=12.1.1
-ARG CUDNN_VERSION=8
+ARG CUDA_VERSION=12.2.2
 ARG UBUNTU_VERSION=22.04
 ARG PYTHON_VERSION=3.10
-ARG TORCH_VERSION=2.4.0
-ARG TORCHVISION_VERSION=0.19.0
-ARG TORCHAUDIO_VERSION=2.4.0
-ARG XFORMERS_VERSION=0.0.27.post2
 
-FROM nvidia/cuda:${CUDA_VERSION}-cudnn${CUDNN_VERSION}-runtime-ubuntu${UBUNTU_VERSION}
+FROM nvidia/cuda:${CUDA_VERSION}-cudnn8-devel-ubuntu${UBUNTU_VERSION}
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/workspace
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH=${CUDA_HOME}/bin:${PATH}
+ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
     wget \
     curl \
-    python${PYTHON_VERSION} \
-    python${PYTHON_VERSION}-dev \
+    python3.10 \
+    python3.10-dev \
+    python3.10-venv \
     python3-pip \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Set up Python
-RUN ln -s /usr/bin/python${PYTHON_VERSION} /usr/bin/python
-RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python${PYTHON_VERSION}
+RUN ln -s /usr/bin/python3.10 /usr/bin/python
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10
 
 # Install Python dependencies
 RUN pip install --no-cache-dir \
-    torch==${TORCH_VERSION} \
-    torchvision==${TORCHVISION_VERSION} \
-    torchaudio==${TORCHAUDIO_VERSION} \
-    xformers==${XFORMERS_VERSION} \
-    flash-attn \
-    jupyter \
-    ipywidgets \
-    huggingface_hub \
-    modelscope
+    packaging \
+    setuptools \
+    wheel \
+    ninja
+
+# Install PyTorch and other dependencies
+RUN pip install --no-cache-dir \
+    torch>=2.4.0 \
+    torchvision \
+    torchaudio \
+    xformers==0.0.27.post2 \
+    --extra-index-url https://download.pytorch.org/whl/cu121
+
+# Install flash-attn
+RUN pip install --no-cache-dir flash-attn --no-build-isolation
 
 # Install flash attention 3
 RUN git clone https://github.com/Dao-AILab/flash-attention && \
@@ -61,8 +66,5 @@ RUN git clone https://github.com/hpcaitech/Open-Sora.git . && \
 # Create necessary directories
 RUN mkdir -p /workspace/ckpts /workspace/samples
 
-# Expose Jupyter port
-EXPOSE 8888
-
 # Default command
-CMD ["jupyter", "notebook", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.token=''"] 
+CMD ["/bin/bash"]
