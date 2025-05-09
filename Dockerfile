@@ -16,6 +16,10 @@ ENV PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128,expandable_segments:True
 ENV CUDA_LAUNCH_BLOCKING=1
 ENV OMP_NUM_THREADS=1
 ENV MKL_NUM_THREADS=1
+ENV PYTORCH_NO_CUDA_MEMORY_CACHING=1
+ENV NCCL_DEBUG=INFO
+ENV NCCL_IB_DISABLE=1
+ENV NCCL_P2P_DISABLE=1
 
 # Install system dependencies
 RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
