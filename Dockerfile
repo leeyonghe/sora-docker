@@ -23,6 +23,8 @@ RUN apt-get update && apt-get install -y \
     python3.10-venv \
     python3-pip \
     build-essential \
+    ninja-build \
+    cmake \
     && rm -rf /var/lib/apt/lists/*
 
 # Set up Python
@@ -32,29 +34,48 @@ RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10
 # Install Python dependencies
 RUN pip install --no-cache-dir \
     packaging \
-    setuptools \
+    setuptools>=64.0.0 \
     wheel \
-    ninja
+    ninja \
+    cmake \
+    scikit-build \
+    build
 
-# Install PyTorch and other dependencies
+# Debug: Show Python and pip versions
+RUN python --version && pip --version
+
+# Set build environment variables
+ENV MAX_JOBS=1
+ENV CMAKE_BUILD_PARALLEL_LEVEL=1
+ENV FORCE_CUDA=1
+ENV TORCH_CUDA_ARCH_LIST="8.0;8.6;9.0"
+
+# Install PyTorch first
 RUN pip install --no-cache-dir \
     torch>=2.4.0 \
     torchvision \
     torchaudio \
-    xformers==0.0.27.post2 \
     --extra-index-url https://download.pytorch.org/whl/cu121
 
-# Install flash-attn
-RUN pip install --no-cache-dir flash-attn --no-build-isolation
+# Install triton separately
+RUN pip install --no-cache-dir triton==3.0.0
 
-# Install flash attention 3
-RUN git clone https://github.com/Dao-AILab/flash-attention && \
-    cd flash-attention && \
-    git checkout 4f0640d5 && \
-    cd hopper && \
-    python setup.py install && \
-    cd ../.. && \
-    rm -rf flash-attention
+# Install xformers
+RUN pip install --no-cache-dir xformers==0.0.27.post2
+
+# Install flash-attn with minimal memory usage
+RUN pip install --no-cache-dir \
+    flash-attn==2.2.3.post2 \
+    --no-build-isolation \
+    --config-settings="--global-option=build_ext" \
+    --config-settings="--global-option=-j1" \
+    --no-deps
+
+# Debug: Verify PyTorch installation
+RUN python -c "import torch; print('PyTorch version:', torch.__version__); print('CUDA available:', torch.cuda.is_available())"
+
+# Debug: Verify flash-attn installation
+RUN python -c "import flash_attn; print('Flash Attention version:', flash_attn.__version__)"
 
 # Set up workspace
 WORKDIR /workspace

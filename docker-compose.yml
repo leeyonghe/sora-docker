@@ -1,12 +1,11 @@
-version: '3.8'
-
 services:
   opensora:
+    tty: true
+    image: opensora:latest
     build:
       context: .
       dockerfile: Dockerfile
     container_name: opensora
-    runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
