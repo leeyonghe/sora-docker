@@ -12,9 +12,22 @@ ENV PYTHONPATH=/workspace
 ENV CUDA_HOME=/usr/local/cuda
 ENV PATH=${CUDA_HOME}/bin:${PATH}
 ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+ENV PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128,expandable_segments:True
+ENV CUDA_LAUNCH_BLOCKING=1
+ENV OMP_NUM_THREADS=1
+ENV MKL_NUM_THREADS=1
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
+    echo 'Acquire::http::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries && \
+    echo 'Acquire::https::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries && \
+    echo 'Acquire::ftp::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries && \
+    sed -i 's/archive.ubuntu.com/ftp.daumkakao.com/g' /etc/apt/sources.list && \
+    sed -i 's/security.ubuntu.com/ftp.daumkakao.com/g' /etc/apt/sources.list && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     git \
     wget \
     curl \
@@ -25,6 +38,8 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     ninja-build \
     cmake \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set up Python
@@ -60,8 +75,8 @@ RUN pip install --no-cache-dir \
 # Install triton separately
 RUN pip install --no-cache-dir triton==3.0.0
 
-# Install xformers
-RUN pip install --no-cache-dir xformers==0.0.27.post2
+# Install xformers with memory optimizations
+RUN pip install --no-cache-dir xformers==0.0.27.post2 --no-build-isolation
 
 # Install flash-attn with minimal memory usage
 RUN pip install --no-cache-dir \
@@ -70,6 +85,9 @@ RUN pip install --no-cache-dir \
     --config-settings="--global-option=build_ext" \
     --config-settings="--global-option=-j1" \
     --no-deps
+
+# Install tensornvme
+RUN pip install --no-cache-dir git+https://github.com/hpcaitech/tensornvme.git
 
 # Debug: Verify PyTorch installation
 RUN python -c "import torch; print('PyTorch version:', torch.__version__); print('CUDA available:', torch.cuda.is_available())"
@@ -80,9 +98,9 @@ RUN python -c "import flash_attn; print('Flash Attention version:', flash_attn._
 # Set up workspace
 WORKDIR /workspace
 
-# Clone Open-Sora
-RUN git clone https://github.com/hpcaitech/Open-Sora.git . && \
-    pip install -v .
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
 # Create necessary directories
 RUN mkdir -p /workspace/ckpts /workspace/samples
