@@ -14,3 +14,7 @@ tensorboard>=2.14.0
 pre-commit>=3.5.0
 omegaconf>=2.3.0
 pyarrow
+typing
+huggingface-hub
+safetensors
+tensornvme
